@@ -4,10 +4,11 @@
 Fossick v1.0
 """
 
+import aiohttp
 import argparse
+import asyncio
 import csv
 import logging
-import requests
 import sys
 from googleapiclient.discovery import build
 
@@ -59,7 +60,7 @@ def google_search(search_term, api_key, cse_id, **kwargs):
     return result
 
 
-def extract_urls(results):
+def extract_google_urls(results):
     """ Extracts URL links from the result JSON
 
     Args:
@@ -77,20 +78,46 @@ def extract_urls(results):
     return link_list
 
 
-def check_url_status(url, session):
-    """ Requests URL link HTTP status
+async def check_url_status(session, search_engine, url):
+    """ Check status of the URL link provided
 
     Args:
-        link ([str]): URL link to check HTTP status of
+        session ([aiohttp.ClientSession]): aiohttp session
+        search_engine ([str]): search engine string
+        url ([str]): url link string
 
     Returns:
-        status ([str]) : HTTP status of link checked
+        [type]: [description]
     """
-    response = session.get(url)
+    async with session.get(url) as response:
+        http_code = response.status
+        return {'search_engine': search_engine, 'url': url, 'http_code': http_code}
 
-    verbose_print(f'\t[d]{response.headers}')
 
-    return response.status_code
+async def check_all_urls(urls, search_engine):
+    """ Async function for checking status of URL links
+
+    Args:
+        urls ([str]): list of URLs
+        search_engine ([str]): search engine string
+
+    Returns:
+        [dict]: returns list of dictionaries
+    """
+    async with aiohttp.ClientSession() as session:
+        tasks = []
+
+        for url in urls:
+            tasks.append(
+                check_url_status(
+                    session,
+                    search_engine,
+                    url
+                )
+            )
+
+        responses = await asyncio.gather(*tasks, return_exceptions=True)
+        return responses
 
 
 def parse_results(search_engine, url, http_code):
@@ -134,19 +161,13 @@ def main():
 
     # Search Google Search Engine
     google_search_results = google_search(ARGS.search_query, ARGS.google_api, ARGS.google_cse)
-    google_search_urls = extract_urls(google_search_results)
-
-    # Create requests session
-    session = requests.Session()
+    google_search_urls = extract_google_urls(google_search_results)
 
     # Create empty list to store all results
     results = []
 
     if google_search_urls:
-        for url in google_search_urls:
-            http_code = check_url_status(url, session)
-            item = parse_results('Google', url, http_code)
-            results.append(item)
+        results.extend(asyncio.run(check_all_urls(google_search_urls, 'Google')))
 
     # Print to console
     for item in results:
@@ -155,7 +176,7 @@ def main():
         http_code = item.get('http_code')
         logging.info(f'[i] Found Link : {url} \n    Status : HTTP {http_code} \n    Search Engine : {search_engine}')
 
-    # Save to CSV file
+    # # Save to CSV file
     if ARGS.write_csv:
         filename = "fossick-results.csv"
         save_output_csv(filename, results)
