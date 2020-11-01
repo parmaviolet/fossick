@@ -42,5 +42,9 @@ Run query against Bing and Google search engines and write results to CSV file.
 
 `./fossick.py -s 'test query' -ga 'google-api-key' -gc 'google-cse-id' -bk 'bing-sub-key' -w`
 
+Run query against Bing and Google search engines and download files locally.
+
+`./fossick.py -s 'test query' -ga 'google-api-key' -gc 'google-cse-id' -bk 'bing-sub-key' -d`
+
 
 
