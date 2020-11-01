@@ -5,10 +5,12 @@ Fossick v1.0
 """
 
 import aiohttp
+import aiofiles
 import argparse
 import asyncio
 import csv
 import logging
+import os
 import requests
 import sys
 from googleapiclient.discovery import build
@@ -19,8 +21,9 @@ PARSER.add_argument('--verbose', '-v', action='store_true', help='increase outpu
 
 # Default arguments
 GROUP_DEFAULT = PARSER.add_argument_group('Default')
-GROUP_DEFAULT.add_argument('--search-query', '-s', required=True, help='search query to be used against search engine(s)')
-GROUP_DEFAULT.add_argument('--write-csv', '-w', action='store_true', required=False, help='output results to a CSV file (prints only to console if not present)')
+GROUP_DEFAULT.add_argument('--download', '-d', action='store_true', required=False, help='download the link contents locally')
+GROUP_DEFAULT.add_argument('--search-query', '-s', required=True, help='search query to be used')
+GROUP_DEFAULT.add_argument('--write-csv', '-w', action='store_true', required=False, help='output results to a CSV file')
 
 # Google arguments
 GROUP_GOOGLE = PARSER.add_argument_group('Google Search Engine')
@@ -28,7 +31,7 @@ GROUP_GOOGLE.add_argument('--google-api', '-ga', required=False, help='Google AP
 GROUP_GOOGLE.add_argument('--google-cse', '-gc', required=False, help='Google CSE ID')
 
 # Bing arguments
-GROUP_BING = PARSER.add_argument_group('Google Search Engine')
+GROUP_BING = PARSER.add_argument_group('Bing Search Engine')
 GROUP_BING.add_argument('--bing-key', '-bk', required=False, help='Bing subscription key')
 
 
@@ -140,6 +143,12 @@ async def check_url_status(session, search_engine, url):
     """
     async with session.get(url) as response:
         http_code = response.status
+
+        if response.status == 200 and ARGS.download:
+            f = await aiofiles.open(os.path.basename(url), mode='wb')
+            await f.write(await response.read())
+            await f.close()
+
         return {'search_engine': search_engine, 'url': url, 'http_code': http_code}
 
 
