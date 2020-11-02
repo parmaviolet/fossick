@@ -11,6 +11,11 @@ The following search engines are currently supported:
 * Bing
 * Google
 
+To create the relevent key(s) required for the search engine use with the tool, follow the guides below.
+
+* Bing Search API - https://docs.microsoft.com/en-us/azure/cognitive-services/bing-web-search/quickstarts/python
+* Google Search API - https://developers.google.com/webmaster-tools/search-console-api-original/v3/quickstart/quickstart-python
+
 ## Useage
 
 Print the help with `python fossick.py -h`.
