@@ -26,9 +26,10 @@ optional arguments:
   --verbose, -v         increase output verbosity
 
 Default:
+  --download, -d        download the link contents locally
   --search-query SEARCH_QUERY, -s SEARCH_QUERY
-                        search query to be used against search engine(s)
-  --write-csv, -w       output results to a CSV file (prints only to console if not present)
+                        search query to be used
+  --write-csv, -w       output results to a CSV file
 
 Google Search Engine:
   --google-api GOOGLE_API, -ga GOOGLE_API
@@ -36,7 +37,7 @@ Google Search Engine:
   --google-cse GOOGLE_CSE, -gc GOOGLE_CSE
                         Google CSE ID
 
-Google Search Engine:
+Bing Search Engine:
   --bing-key BING_KEY, -bk BING_KEY
                         Bing subscription key
 ```
