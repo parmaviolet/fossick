@@ -60,13 +60,25 @@ def google_search(search_term, api_key, cse_id, **kwargs):
         response [str]: JSON search object result
     """
     try:
-        service = build('customsearch', 'v1', developerKey=api_key, cache_discovery=False)
-        response = service.cse().list(q=search_term, cx=cse_id, **kwargs).execute()  # pylint: disable=no-member
-        verbose_print(f'\t[d]{response}')
+        # https://developers.google.com/custom-search/v1/reference/rest/v1/cse/list
+        # Due to API limiting to 10 results returned and a max limit of 100 we loop through till we hit that value
+        start = 1
+        results = []
+        while start <= 100:
+            service = build('customsearch', 'v1', developerKey=api_key, cache_discovery=False)
+            response = service.cse().list(q=search_term, cx=cse_id, start=start, ** kwargs).execute()  # pylint: disable=no-member
 
-        return response
-    except HttpError:
+            if response.get('items'):
+                results.append({
+                    'items': response.get('items')
+                })
+            else:
+                break
+
+        return results
+    except HttpError as e:
         logging.error(f"[!] Error response from Google Search API - likely incorrect key value(s)")
+        verbose_print(f'\t[d]{e}')
         return ''
 
 
@@ -80,10 +92,12 @@ def extract_google_urls(results):
         results_list ([list]): List of URL links parsed
     """
     results_list = []
-    items = results.get('items')
 
-    for item in items:
-        results_list.append(item.get('link'))
+    for result in results:
+        items = result.get('items')
+
+        for item in items:
+            results_list.append(item.get('link'))
 
     return results_list
 
@@ -220,6 +234,7 @@ def main():
 
     if results:
         # Print to console
+        print(len(results))
         for item in results:
             search_engine = item.get('search_engine')
             url = item.get('url')
