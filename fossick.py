@@ -75,6 +75,8 @@ def google_search(search_term, api_key, cse_id, **kwargs):
             else:
                 break
 
+            start = start + 10
+
         return results
     except HttpError as e:
         logging.error(f"[!] Error response from Google Search API - likely incorrect key value(s)")
