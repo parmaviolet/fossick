@@ -77,6 +77,7 @@ def google_search(search_term, api_key, cse_id, **kwargs):
 
             start = start + 10
 
+        verbose_print(f'\t[d]{results}')
         return results
     except HttpError as e:
         logging.error(f"[!] Error response from Google Search API - likely incorrect key value(s)")
@@ -115,14 +116,34 @@ def bing_search(search_term, sub_key):
         response [str]: JSON search object results
     """
     endpoint = "https://api.bing.microsoft.com/v7.0/search"
-    params = {'q': search_term}
+    params = {
+        'q': search_term,
+        'count': 50
+    }
     headers = {'Ocp-Apim-Subscription-Key': sub_key}
 
     try:
+        results = []
         response = requests.get(endpoint, headers=headers, params=params)
-        verbose_print(f'\t[d]{response}')
+        results.append({'webPages': response.json().get('webPages')})
+        verbose_print(f'\t[d]{response.text}')
 
-        return response.json()
+        totalMatches = response.json().get('webPages').get('totalEstimatedMatches')
+
+        offset = 50  # the initial offset
+        while offset < totalMatches:
+            # more results to query - update params with offset for next pages
+            params = {
+                'q': search_term,
+                'count': 50,
+                'offset': offset
+            }
+
+            response = requests.get(endpoint, headers=headers, params=params)
+            results.append({'webPages': response.json().get('webPages')})
+            offset = offset + 50  # increase another 50 (being the max returnable results from API)
+
+        return results
     except Exception:
         logging.error(f"[!] Error response from Bing Search API - likely incorrect key value(s)")
         return ''
@@ -138,10 +159,12 @@ def extract_bing_urls(results):
         results_list ([list]): List of URL links parsed
     """
     results_list = []
-    web_pages = results.get('webPages')
 
-    for item in web_pages.get('value'):
-        results_list.append(item.get('url'))
+    for web_page in results:
+        links = web_page.get('webPages')
+
+        for item in links.get('value'):
+            results_list.append(item.get('url'))
 
     return results_list
 
@@ -229,7 +252,6 @@ def main():
     # Bing Search API
     if ARGS.bing_key:
         bing_search_results = bing_search(ARGS.search_query, ARGS.bing_key)
-
         if bing_search_results:
             bing_search_urls = extract_bing_urls(bing_search_results)
             results.extend(asyncio.run(check_all_urls(bing_search_urls, 'Bing')))
