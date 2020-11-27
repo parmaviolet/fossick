@@ -236,7 +236,6 @@ def main():
 
     if results:
         # Print to console
-        print(len(results))
         for item in results:
             search_engine = item.get('search_engine')
             url = item.get('url')
