@@ -66,7 +66,7 @@ def google_search(search_term, api_key, cse_id, **kwargs):
         results = []
         while start <= 100:
             service = build('customsearch', 'v1', developerKey=api_key, cache_discovery=False)
-            response = service.cse().list(q=search_term, cx=cse_id, start=start, ** kwargs).execute()  # pylint: disable=no-member
+            response = service.cse().list(q=search_term, cx=cse_id, start=start, **kwargs).execute()  # pylint: disable=no-member
 
             if response.get('items'):
                 results.append({
