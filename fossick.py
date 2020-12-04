@@ -4,15 +4,16 @@
 Fossick v1.0
 """
 
-import aiohttp
-import aiofiles
 import argparse
 import asyncio
 import csv
 import logging
 import os
-import requests
 import sys
+
+import aiofiles
+import aiohttp
+import requests
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
@@ -23,7 +24,7 @@ PARSER.add_argument('--verbose', '-v', action='store_true', help='increase outpu
 GROUP_DEFAULT = PARSER.add_argument_group('Default')
 GROUP_DEFAULT.add_argument('--download', '-d', action='store_true', required=False, help='download the link contents locally')
 GROUP_DEFAULT.add_argument('--search-query', '-s', required=True, help='search query to be used')
-GROUP_DEFAULT.add_argument('--write-csv', '-w', action='store_true', required=False, help='output results to a CSV file')
+GROUP_DEFAULT.add_argument('--write-csv', '-w', required=False, default='fossick-results.csv', help='output results to a CSV file (default filename: %(default)s)')
 
 # Google arguments
 GROUP_GOOGLE = PARSER.add_argument_group('Google Search Engine')
@@ -36,9 +37,6 @@ GROUP_BING.add_argument('--bing-key', '-bk', required=False, help='Bing subscrip
 
 
 ARGS = PARSER.parse_args(args=None if sys.argv[1:] else ['--help'])
-
-if not ARGS.search_query:
-    PARSER.error('--search-query must be specified')
 
 if (not ARGS.google_api or not ARGS.google_cse) and not ARGS.bing_key:
     PARSER.error('at least one search engine must be configured')
@@ -62,9 +60,8 @@ def google_search(search_term, api_key, cse_id, **kwargs):
     try:
         # https://developers.google.com/custom-search/v1/reference/rest/v1/cse/list
         # Due to API limiting to 10 results returned and a max limit of 100 we loop through till we hit that value
-        start = 1
         results = []
-        while start <= 100:
+        for start in range(1, 100, 10):
             service = build('customsearch', 'v1', developerKey=api_key, cache_discovery=False)
             response = service.cse().list(q=search_term, cx=cse_id, start=start, **kwargs).execute()  # pylint: disable=no-member
 
@@ -74,8 +71,6 @@ def google_search(search_term, api_key, cse_id, **kwargs):
                 })
             else:
                 break
-
-            start = start + 10
 
         verbose_print(f'\t[d]{results}')
         return results
@@ -130,8 +125,7 @@ def bing_search(search_term, sub_key):
 
         totalMatches = response.json().get('webPages').get('totalEstimatedMatches')
 
-        offset = 50  # the initial offset
-        while offset < totalMatches:
+        for start in range(50, totalMatches, 50):
             # more results to query - update params with offset for next pages
             params = {
                 'q': search_term,
@@ -141,7 +135,6 @@ def bing_search(search_term, sub_key):
 
             response = requests.get(endpoint, headers=headers, params=params)
             results.append({'webPages': response.json().get('webPages')})
-            offset = offset + 50  # increase another 50 (being the max returnable results from API)
 
         return results
     except Exception:
@@ -222,13 +215,10 @@ def save_output_csv(filename, search_results):
         with open(filename, mode='w') as csv_file:
             field_names = ['search_engine', 'url', 'http_code']
             writer = csv.DictWriter(csv_file, fieldnames=field_names)
-
             writer.writeheader()
-
-            for item in search_results:
-                writer.writerow(item)
+            writer.writerows(search_results)
     except OSError as e:
-        logging.error(f'[!] Creating CSV file - debug info: {e}')
+        logging.error(f'[!] Error creating CSV file {filename} - debug info: {e}')
 
 
 def main():
@@ -262,13 +252,13 @@ def main():
             search_engine = item.get('search_engine')
             url = item.get('url')
             http_code = item.get('http_code')
-            logging.info(f'[i] Found Link : {url} \n    Status : HTTP {http_code} \n    Search Engine : {search_engine}')
+            logging.info(f'[i] Found Link: {url} \n\tStatus: HTTP {http_code} \n\tSearch Engine: {search_engine}')
 
-        # # Save to CSV file
+        # Save to CSV file
         if ARGS.write_csv:
-            filename = "fossick-results.csv"
+            filename = ARGS.write_csv
             save_output_csv(filename, results)
-            logging.info(f'[i] Successfully saved output to CSV file search-engine-results.csv')
+            logging.info(f'[i] Successfully saved output to {filename}')
     else:
         logging.info("[i] No results returned")
 
