@@ -125,7 +125,7 @@ def bing_search(search_term, sub_key):
 
         totalMatches = response.json().get('webPages').get('totalEstimatedMatches')
 
-        for start in range(50, totalMatches, 50):
+        for offset in range(50, totalMatches, 50):
             # more results to query - update params with offset for next pages
             params = {
                 'q': search_term,
